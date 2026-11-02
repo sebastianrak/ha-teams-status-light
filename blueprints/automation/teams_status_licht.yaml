@@ -1,21 +1,14 @@
 blueprint:
   name: Teams-Statuslicht
   author: Sebastian Rak
-  description: >-
-    Zeigt den Microsoft-Teams-Status (Microsoft-Graph-Präsenz) auf einer
-    RGB-Leuchte an, z. B. dem ESPHome-Teams-Statuslicht.
-
+  description: |
+    Zeigt den Microsoft-Teams-Status (Microsoft-Graph-Präsenz) auf einer RGB-Leuchte an, z. B. dem ESPHome-Teams-Statuslicht.
 
     **Regeln**
 
     - Nur wenn die gewählte Person zuhause ist, sonst aus.
-
-    - Werktags innerhalb der Arbeitszeit: voller Status
-      (rot / gelb / grün / blau).
-
-    - Außerhalb der Arbeitszeit: nur Präsentieren (rot pulsierend) und
-      Call (rot), sonst aus.
-
+    - Werktags innerhalb der Arbeitszeit: voller Status (rot / gelb / grün / blau).
+    - Außerhalb der Arbeitszeit: nur Präsentieren (rot pulsierend) und Call (rot), sonst aus.
 
     **Farben**
 
@@ -28,9 +21,7 @@ blueprint:
     | Away, BeRightBack, Inactive | blau |
     | Offline, unbekannt | aus |
 
-
-    Die Helligkeit je Farbe kommt aus vier input_number-Helfern (0–100 %).
-    Änderungen an den Helfern werden sofort übernommen.
+    Die Helligkeit je Farbe kommt aus vier input_number-Helfern (0–100 %). Änderungen an den Helfern werden sofort übernommen.
   domain: automation
   homeassistant:
     min_version: 2024.10.0
