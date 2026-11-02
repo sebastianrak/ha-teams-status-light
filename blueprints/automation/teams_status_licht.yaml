@@ -1,0 +1,321 @@
+blueprint:
+  name: Teams-Statuslicht
+  author: Sebastian Rak
+  description: >-
+    Zeigt den Microsoft-Teams-Status (Microsoft-Graph-Präsenz) auf einer
+    RGB-Leuchte an, z. B. dem ESPHome-Teams-Statuslicht.
+
+
+    **Regeln**
+
+    - Nur wenn die gewählte Person zuhause ist, sonst aus.
+
+    - Werktags innerhalb der Arbeitszeit: voller Status
+      (rot / gelb / grün / blau).
+
+    - Außerhalb der Arbeitszeit: nur Präsentieren (rot pulsierend) und
+      Call (rot), sonst aus.
+
+
+    **Farben**
+
+    | Teams-Aktivität | Farbe |
+    |---|---|
+    | Presenting | rot pulsierend |
+    | InACall, InAConferenceCall, DoNotDisturb, UrgentInterruptionsOnly | rot |
+    | InAMeeting, Busy | gelb |
+    | Available | grün |
+    | Away, BeRightBack, Inactive | blau |
+    | Offline, unbekannt | aus |
+
+
+    Die Helligkeit je Farbe kommt aus vier input_number-Helfern (0–100 %).
+    Änderungen an den Helfern werden sofort übernommen.
+  domain: automation
+  homeassistant:
+    min_version: 2024.10.0
+  source_url: https://github.com/sebastianrak/ha-teams-status-light/blob/main/blueprints/automation/teams_status_licht.yaml
+  input:
+    quellen:
+      name: Quellen
+      icon: mdi:microsoft-teams
+      input:
+        teams_activity:
+          name: Teams-Aktivität
+          description: >-
+            Sensor mit der Teams-Aktivität aus Microsoft Graph
+            (z. B. sensor.ms_teams_activity der HACS-Integration
+            "Microsoft Graph").
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        person:
+          name: Person
+          description: Das Licht zeigt nur etwas an, wenn diese Person zuhause ist.
+          selector:
+            entity:
+              filter:
+                - domain: person
+        workday:
+          name: Werktag-Sensor
+          description: binary_sensor der Integration "Workday" (an = Arbeitstag).
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                  integration: workday
+    leuchte:
+      name: Leuchte
+      icon: mdi:led-strip-variant
+      input:
+        status_light:
+          name: Statuslicht
+          selector:
+            entity:
+              filter:
+                - domain: light
+        pulse_effect:
+          name: Effekt für "Präsentieren"
+          description: Name des Pulsier-Effekts der Leuchte ("None" = ohne Effekt).
+          default: Pulsieren
+          selector:
+            text:
+    zeiten:
+      name: Arbeitszeit
+      icon: mdi:clock-outline
+      input:
+        work_start:
+          name: Beginn
+          default: "08:00:00"
+          selector:
+            time:
+        work_end:
+          name: Ende
+          default: "18:00:00"
+          selector:
+            time:
+    helligkeit:
+      name: Helligkeit
+      icon: mdi:brightness-6
+      description: Je Farbe ein input_number-Helfer (0–100 %).
+      input:
+        brightness_red:
+          name: Helligkeit Rot
+          selector:
+            entity:
+              filter:
+                - domain: input_number
+        brightness_yellow:
+          name: Helligkeit Gelb
+          selector:
+            entity:
+              filter:
+                - domain: input_number
+        brightness_green:
+          name: Helligkeit Grün
+          selector:
+            entity:
+              filter:
+                - domain: input_number
+        brightness_blue:
+          name: Helligkeit Blau
+          selector:
+            entity:
+              filter:
+                - domain: input_number
+    farben:
+      name: Farben
+      icon: mdi:palette
+      collapsed: true
+      input:
+        color_red:
+          name: Rot (Call, Nicht stören, Präsentieren)
+          default: [255, 0, 0]
+          selector:
+            color_rgb:
+        color_yellow:
+          name: Gelb (Termin, Beschäftigt)
+          default: [255, 200, 0]
+          selector:
+            color_rgb:
+        color_green:
+          name: Grün (Verfügbar)
+          default: [0, 255, 0]
+          selector:
+            color_rgb:
+        color_blue:
+          name: Blau (Abwesend, Gleich zurück, Inaktiv)
+          default: [0, 0, 255]
+          selector:
+            color_rgb:
+
+mode: restart
+
+variables:
+  hell_rot: !input brightness_red
+  hell_gelb: !input brightness_yellow
+  hell_gruen: !input brightness_green
+  hell_blau: !input brightness_blue
+
+triggers:
+  - trigger: state
+    entity_id: !input teams_activity
+  - trigger: state
+    entity_id: !input person
+  - trigger: time
+    at: !input work_start
+  - trigger: time
+    at: !input work_end
+  - trigger: state
+    entity_id: !input status_light
+    from: unavailable
+  - trigger: homeassistant
+    event: start
+  - trigger: state
+    entity_id:
+      - !input brightness_red
+      - !input brightness_yellow
+      - !input brightness_green
+      - !input brightness_blue
+
+conditions:
+  - alias: Nur wenn das Statuslicht erreichbar ist
+    condition: not
+    conditions:
+      - condition: state
+        entity_id: !input status_light
+        state: unavailable
+
+actions:
+  - choose:
+      - alias: "Präsentiert: rot pulsierend"
+        conditions:
+          - condition: state
+            entity_id: !input person
+            state: home
+          - condition: state
+            entity_id: !input teams_activity
+            state: Presenting
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input status_light
+            data:
+              rgb_color: !input color_red
+              brightness_pct: "{{ states(hell_rot) | int(100) }}"
+              effect: !input pulse_effect
+
+      - alias: "Im Call: rot"
+        conditions:
+          - condition: state
+            entity_id: !input person
+            state: home
+          - condition: state
+            entity_id: !input teams_activity
+            state: [InACall, InAConferenceCall]
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input status_light
+            data:
+              rgb_color: !input color_red
+              brightness_pct: "{{ states(hell_rot) | int(100) }}"
+              effect: "None"
+
+      - alias: "Nicht stören (Arbeitszeit): rot"
+        conditions:
+          - condition: state
+            entity_id: !input person
+            state: home
+          - condition: state
+            entity_id: !input workday
+            state: "on"
+          - condition: time
+            after: !input work_start
+            before: !input work_end
+          - condition: state
+            entity_id: !input teams_activity
+            state: [DoNotDisturb, UrgentInterruptionsOnly]
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input status_light
+            data:
+              rgb_color: !input color_red
+              brightness_pct: "{{ states(hell_rot) | int(100) }}"
+              effect: "None"
+
+      - alias: "Termin/Beschäftigt (Arbeitszeit): gelb"
+        conditions:
+          - condition: state
+            entity_id: !input person
+            state: home
+          - condition: state
+            entity_id: !input workday
+            state: "on"
+          - condition: time
+            after: !input work_start
+            before: !input work_end
+          - condition: state
+            entity_id: !input teams_activity
+            state: [InAMeeting, Busy]
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input status_light
+            data:
+              rgb_color: !input color_yellow
+              brightness_pct: "{{ states(hell_gelb) | int(100) }}"
+              effect: "None"
+
+      - alias: "Verfügbar (Arbeitszeit): grün"
+        conditions:
+          - condition: state
+            entity_id: !input person
+            state: home
+          - condition: state
+            entity_id: !input workday
+            state: "on"
+          - condition: time
+            after: !input work_start
+            before: !input work_end
+          - condition: state
+            entity_id: !input teams_activity
+            state: Available
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input status_light
+            data:
+              rgb_color: !input color_green
+              brightness_pct: "{{ states(hell_gruen) | int(100) }}"
+              effect: "None"
+
+      - alias: "Abwesend/Gleich zurück/Inaktiv (Arbeitszeit): blau"
+        conditions:
+          - condition: state
+            entity_id: !input person
+            state: home
+          - condition: state
+            entity_id: !input workday
+            state: "on"
+          - condition: time
+            after: !input work_start
+            before: !input work_end
+          - condition: state
+            entity_id: !input teams_activity
+            state: [Away, BeRightBack, Inactive]
+        sequence:
+          - action: light.turn_on
+            target:
+              entity_id: !input status_light
+            data:
+              rgb_color: !input color_blue
+              brightness_pct: "{{ states(hell_blau) | int(100) }}"
+              effect: "None"
+
+    default:
+      - action: light.turn_off
+        target:
+          entity_id: !input status_light

@@ -1,0 +1,141 @@
+blueprint:
+  name: Teams-Statuslicht – Farbtest
+  author: Sebastian Rak
+  description: >-
+    Zeigt nacheinander alle Farben des Teams-Statuslichts mit den
+    eingestellten Helligkeiten (rot pulsierend, rot, gelb, grün, blau, aus)
+    und übergibt die Leuchte danach wieder an die Status-Automation.
+  domain: script
+  homeassistant:
+    min_version: 2024.10.0
+  source_url: https://github.com/sebastianrak/ha-teams-status-light/blob/main/blueprints/script/teams_status_licht_farbtest.yaml
+  input:
+    status_light:
+      name: Statuslicht
+      selector:
+        entity:
+          filter:
+            - domain: light
+    status_automation:
+      name: Status-Automation
+      description: Die aus dem Blueprint "Teams-Statuslicht" erstellte Automation.
+      selector:
+        entity:
+          filter:
+            - domain: automation
+    pulse_effect:
+      name: Effekt für "Präsentieren"
+      default: Pulsieren
+      selector:
+        text:
+    brightness_red:
+      name: Helligkeit Rot
+      selector:
+        entity:
+          filter:
+            - domain: input_number
+    brightness_yellow:
+      name: Helligkeit Gelb
+      selector:
+        entity:
+          filter:
+            - domain: input_number
+    brightness_green:
+      name: Helligkeit Grün
+      selector:
+        entity:
+          filter:
+            - domain: input_number
+    brightness_blue:
+      name: Helligkeit Blau
+      selector:
+        entity:
+          filter:
+            - domain: input_number
+    color_red:
+      name: Rot
+      default: [255, 0, 0]
+      selector:
+        color_rgb:
+    color_yellow:
+      name: Gelb
+      default: [255, 200, 0]
+      selector:
+        color_rgb:
+    color_green:
+      name: Grün
+      default: [0, 255, 0]
+      selector:
+        color_rgb:
+    color_blue:
+      name: Blau
+      default: [0, 0, 255]
+      selector:
+        color_rgb:
+
+mode: restart
+icon: mdi:palette
+
+variables:
+  hell_rot: !input brightness_red
+  hell_gelb: !input brightness_yellow
+  hell_gruen: !input brightness_green
+  hell_blau: !input brightness_blue
+
+sequence:
+  - alias: "Präsentiert: rot pulsierend"
+    action: light.turn_on
+    target:
+      entity_id: !input status_light
+    data:
+      rgb_color: !input color_red
+      brightness_pct: "{{ states(hell_rot) | int(100) }}"
+      effect: !input pulse_effect
+  - delay: {seconds: 5}
+  - alias: "Call / Nicht stören: rot"
+    action: light.turn_on
+    target:
+      entity_id: !input status_light
+    data:
+      rgb_color: !input color_red
+      brightness_pct: "{{ states(hell_rot) | int(100) }}"
+      effect: "None"
+  - delay: {seconds: 4}
+  - alias: "Termin / Beschäftigt: gelb"
+    action: light.turn_on
+    target:
+      entity_id: !input status_light
+    data:
+      rgb_color: !input color_yellow
+      brightness_pct: "{{ states(hell_gelb) | int(100) }}"
+      effect: "None"
+  - delay: {seconds: 4}
+  - alias: "Verfügbar: grün"
+    action: light.turn_on
+    target:
+      entity_id: !input status_light
+    data:
+      rgb_color: !input color_green
+      brightness_pct: "{{ states(hell_gruen) | int(100) }}"
+      effect: "None"
+  - delay: {seconds: 4}
+  - alias: "Abwesend / Inaktiv: blau"
+    action: light.turn_on
+    target:
+      entity_id: !input status_light
+    data:
+      rgb_color: !input color_blue
+      brightness_pct: "{{ states(hell_blau) | int(100) }}"
+      effect: "None"
+  - delay: {seconds: 4}
+  - alias: Aus
+    action: light.turn_off
+    target:
+      entity_id: !input status_light
+  - delay: {seconds: 2}
+  - alias: Zurück an die Status-Automation
+    action: automation.trigger
+    target:
+      entity_id: !input status_automation
+    data:
+      skip_condition: true

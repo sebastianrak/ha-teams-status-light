@@ -1,0 +1,32 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  esphome:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install esphome
+      - name: Test-Secrets anlegen
+        run: |
+          KEY=$(python -c "import base64,os;print(base64.b64encode(os.urandom(32)).decode())")
+          printf 'wifi_ssid: "test"\nwifi_password: "testtest"\napi_encrypt: "%s"\n' "$KEY" > esphome/secrets.yaml
+      - run: esphome config esphome/teams-status-licht.yaml
+
+  blueprints:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install pyyaml
+      - name: Blueprints prüfen
+        run: python .github/scripts/check_blueprints.py

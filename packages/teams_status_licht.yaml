@@ -1,0 +1,45 @@
+# Helfer für die Helligkeit des Teams-Statuslichts (nur für YAML-Nutzer).
+# Alternative ohne YAML: Einstellungen → Geräte & Dienste → Helfer →
+# "Zahlenwert" vier Mal anlegen (5–100 %, Schrittweite 5).
+#
+# Einbinden über packages, z. B. in configuration.yaml:
+#   homeassistant:
+#     packages: !include_dir_named packages
+#
+# Kein "initial" gesetzt: Die eingestellten Werte überstehen Neustarts.
+# Startwerte nach dem ersten Anlegen einmal per Schieberegler setzen
+# (Vorschlag: Rot 100, Gelb 100, Grün 60, Blau 30).
+
+input_number:
+  teams_licht_helligkeit_rot:
+    name: Teams-Licht Helligkeit Rot
+    icon: mdi:brightness-6
+    min: 5
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider
+  teams_licht_helligkeit_gelb:
+    name: Teams-Licht Helligkeit Gelb
+    icon: mdi:brightness-6
+    min: 5
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider
+  teams_licht_helligkeit_grun:
+    name: Teams-Licht Helligkeit Grün
+    icon: mdi:brightness-6
+    min: 5
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider
+  teams_licht_helligkeit_blau:
+    name: Teams-Licht Helligkeit Blau
+    icon: mdi:brightness-6
+    min: 5
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    mode: slider

@@ -1,0 +1,70 @@
+# =====================================================================
+# Teams-Statuslicht – ESPHome-Firmware
+# Hardware: Seeed Studio XIAO ESP32S3 + WS2812B-Streifen (60 LEDs/m)
+# Gehäuse:  Radig StatusLight (MakerWorld), siehe README
+#
+# Das Gerät ist eine reine RGB-Leuchte. Welche Farbe wann leuchtet,
+# entscheidet Home Assistant (Blueprint "Teams-Statuslicht").
+#
+# Benötigt in secrets.yaml: wifi_ssid, wifi_password, api_encrypt
+# Getestet mit ESPHome 2026.10
+# =====================================================================
+
+substitutions:
+  name: teams-status-licht
+  friendly_name: Teams-Status-Licht
+  led_pin: GPIO1        # XIAO-Pin D0 (wie im Radig StatusLight); nicht D2/GPIO3 (Strapping-Pin)
+  num_leds: "16"        # Radig StatusLight: 16 LEDs; bei anderer Länge anpassen
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.9.0   # für OTA-Verschlüsselung
+
+esp32:
+  board: seeed_xiao_esp32s3
+  variant: esp32s3
+  framework:
+    type: esp-idf
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encrypt
+
+ota:
+  - platform: esphome
+    encryption:          # leer = übernimmt den API-Schlüssel
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: status_licht
+    name: None           # Entität: light.teams_status_licht (aus friendly_name)
+    pin: ${led_pin}
+    num_leds: ${num_leds}
+    chipset: WS2812
+    channel_colors: GRB  # Rot und Grün vertauscht? -> RGB
+    restore_mode: ALWAYS_OFF
+    default_transition_length: 300ms
+    effects:
+      - pulse:
+          name: Pulsieren
+          transition_length: 1s
+          update_interval: 1s
+
+# Ohne Verbindung zu Home Assistant keinen veralteten Status anzeigen.
+# Nach der Wiederverbindung setzt die Automation den Status neu.
+interval:
+  - interval: 30s
+    then:
+      - if:
+          condition:
+            not:
+              api.connected:
+          then:
+            - light.turn_off: status_licht
